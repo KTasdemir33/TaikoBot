@@ -2,12 +2,12 @@ require('dotenv').config();
 const { getWeb3, walletAddress, switchRpc } = require('./config/web3');
 const { wrap } = require('./src/module/wrap/wrap');
 const { unwrap } = require('./src/module/wrap/unwrap');
-const BN = require('bn.js');
+const BN = require('bignumber.js');
 
 function randomGasPrice(web3Instance) {
     const minGwei = new BN(web3Instance.utils.toWei('0.12', 'gwei'));
     const maxGwei = new BN(web3Instance.utils.toWei('0.15', 'gwei'));
-    const randomGwei = minGwei.add(new BN(Math.floor(Math.random() * (maxGwei.sub(minGwei).toNumber()))));
+    const randomGwei = minGwei.plus(BN(Math.floor(Math.random() * (maxGwei.minus(minGwei).toNumber()))));
     return randomGwei;
 }
 
@@ -20,7 +20,7 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
     while (true) {
         try {
             const gasLimit = new BN(100000);
-            const totalTxCost = gasLimit.mul(new BN(gasPriceWei));
+            const totalTxCost = gasLimit.times(gasPriceWei);
             const balanceWei = await web3Instance.eth.getBalance(walletAddress);
             const balance = new BN(balanceWei);
 
@@ -29,7 +29,7 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
                 return;
             }
 
-            return await action(...args, gasPriceWei.toString(), localNonce);
+            return await action(...args, gasPriceWei.toString(10), localNonce);
         } catch (error) {
             console.error(`Error executing transaction: ${error.message}`);
             if (error.message.includes("Invalid JSON RPC response")) {
@@ -45,51 +45,65 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
     }
 }
 
-async function main() {
+async function performIteration() {
     let web3Instance = getWeb3();
-    const maxIterations = 50; // 50 işlem yapacak şekilde ayarlandı
-    let iterationCount = 0;
 
-    while (iterationCount < maxIterations) {
-        const gasPriceWei = randomGasPrice(web3Instance);
-        let localNonce = await getNonce(web3Instance);
+    const gasPriceWei = randomGasPrice(web3Instance);
+    let localNonce = await getNonce(web3Instance);
 
-        const balanceWei = await web3Instance.eth.getBalance(walletAddress);
-        const balance = new BN(balanceWei);
-        const gasLimit = new BN(500000); 
-        const totalTxCost = gasLimit.mul(gasPriceWei);
+    const balanceWei = await web3Instance.eth.getBalance(walletAddress);
+    const balance = new BN(balanceWei);
+    const gasLimit = new BN(500000); 
+    const totalTxCost = gasLimit.times(gasPriceWei);
 
-        console.log(`Gas Limit: ${gasLimit.toString()}, Gas Price: ${web3Instance.utils.fromWei(gasPriceWei, 'gwei')} Gwei`);
-        console.log(`Total Tx Cost: ${web3Instance.utils.fromWei(totalTxCost.toString(), 'ether')} ETH`);
+    console.log(`Gas Limit: ${gasLimit.toString()}, Gas Price: ${web3Instance.utils.fromWei(gasPriceWei.toString(10), 'gwei')} Gwei`);
+    console.log(`Total Tx Cost: ${web3Instance.utils.fromWei(totalTxCost.toString(10), 'ether')} ETH`);
 
-        if (balance.lt(totalTxCost)) {
-            console.log("Insufficient funds to cover the transaction cost. Transaction skipped.");
-            break;
-        }
-
-        // Wrap with 90% of wallet balance
-        const ethBalance = balance;
-        const wrapAmount = ethBalance.mul(new BN(90)).div(new BN(100)); // %90 of ETH balance
-        const wrapAmountEther = web3Instance.utils.fromWei(wrapAmount.toString(), 'ether');
-        let txHash = await executeTransaction(wrap, gasPriceWei, localNonce, wrapAmountEther);
-        if (!txHash) break;
-        localNonce++;
-        let txLink = `https://taikoscan.io/tx/${txHash}`;
-        console.log(`Wrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} ETH`);
-
-        // Unwrap with all WETH balance
-        // Assuming wrap and unwrap functions handle WETH address internally
-        localNonce = await getNonce(web3Instance);
-        txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, wrapAmountEther);
-        if (!txHash) break;
-        localNonce++;
-        txLink = `https://taikoscan.io/tx/${txHash}`;
-        console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} WETH`);
-
-        iterationCount++;
+    if (balance.lt(totalTxCost)) {
+        console.log("Insufficient funds to cover the transaction cost. Transaction skipped.");
+        return;
     }
 
-    console.log(`Completed ${maxIterations} iterations. Exiting loop.`);
+    // Wrap with 90% of wallet balance
+    const ethBalance = balance;
+    const wrapAmount = ethBalance.times(0.9); // %90 of ETH balance
+    const wrapAmountEther = web3Instance.utils.fromWei(wrapAmount.toString(10), 'ether');
+    let txHash = await executeTransaction(wrap, gasPriceWei, localNonce, wrapAmountEther);
+    if (!txHash) return;
+    localNonce++;
+    let txLink = `https://taikoscan.io/tx/${txHash}`;
+    console.log(`Wrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} ETH`);
+
+    // Unwrap with all WETH balance
+    localNonce = await getNonce(web3Instance);
+    txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, wrapAmountEther);
+    if (!txHash) return;
+    localNonce++;
+    txLink = `https://taikoscan.io/tx/${txHash}`;
+    console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} WETH`);
+}
+
+async function main() {
+    const maxIterations = 50;
+    let iterationCount = 0;
+
+    const startTimestamp = Date.now();
+    const endTime = startTimestamp + (5 * 60 * 60 * 1000); // 5 hours in milliseconds
+
+    const performNextIteration = async () => {
+        if (iterationCount < maxIterations && Date.now() < endTime) {
+            await performIteration();
+            iterationCount++;
+
+            // Random delay between iterations, up to 5 hours / 50 iterations for distribution
+            const delay = Math.random() * ((7 * 60 * 60 * 1000) / maxIterations);
+            setTimeout(performNextIteration, delay);
+        } else {
+            console.log(`Completed ${iterationCount} iterations. Exiting loop.`);
+        }
+    };
+
+    performNextIteration();
 }
 
 main().catch(console.error);
