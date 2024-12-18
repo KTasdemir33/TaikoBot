@@ -88,14 +88,14 @@ async function main() {
     let iterationCount = 0;
 
     const startTimestamp = Date.now();
-    const endTime = startTimestamp + (5 * 60 * 60 * 1000); // 5 hours in milliseconds
+    const endTime = startTimestamp + (7 * 60 * 60 * 1000); // 7 hours in milliseconds
 
     const performNextIteration = async () => {
         if (iterationCount < maxIterations && Date.now() < endTime) {
             await performIteration();
             iterationCount++;
 
-            // Random delay between iterations, up to 5 hours / 50 iterations for distribution
+            // Random delay between iterations, up to 7 hours / 50 iterations for distribution
             const delay = Math.random() * ((7 * 60 * 60 * 1000) / maxIterations);
             setTimeout(performNextIteration, delay);
         } else {
