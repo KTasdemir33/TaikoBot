@@ -1,20 +1,14 @@
 require('dotenv').config();
 const { getWeb3, walletAddress, switchRpc } = require('./config/web3');
-const { lendAmount } = require('./src/module/minterest/lend');
-const { redeem } = require('./src/module/minterest/redeem');
 const { wrap } = require('./src/module/wrap/wrap');
 const { unwrap } = require('./src/module/wrap/unwrap');
 const BN = require('bn.js');
 
 function randomGasPrice(web3Instance) {
-    const minGwei = new BN(web3Instance.utils.toWei('0.12', 'gwei'));
-    const maxGwei = new BN(web3Instance.utils.toWei('0.15', 'gwei'));
+    const minGwei = new BN(web3Instance.utils.toWei('0.05', 'gwei'));
+    const maxGwei = new BN(web3Instance.utils.toWei('0.054', 'gwei'));
     const randomGwei = minGwei.add(new BN(Math.floor(Math.random() * (maxGwei.sub(minGwei).toNumber()))));
     return randomGwei;
-}
-
-function randomIterations() {
-    return Math.random() < 0.5 ? 7 : 8; 
 }
 
 async function getNonce(web3Instance) {
@@ -53,9 +47,7 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
 
 async function main() {
     let web3Instance = getWeb3();
-    const lendRangeMin = 1.0;
-    const lendRangeMax = 2.0;
-    const maxIterations = randomIterations();
+    const maxIterations = 50; // 50 işlem yapacak şekilde ayarlandı
     let iterationCount = 0;
 
     while (iterationCount < maxIterations) {
@@ -75,41 +67,24 @@ async function main() {
             break;
         }
 
-        // Lend
-        let amount = Math.random() * (lendRangeMax - lendRangeMin) + lendRangeMin;
-        amount = Math.floor(amount * 1_000_000);
-        let txHash = await executeTransaction(lendAmount, gasPriceWei, localNonce, amount);
+        // Wrap with 90% of wallet balance
+        const ethBalance = balance;
+        const wrapAmount = ethBalance.mul(new BN(90)).div(new BN(100)); // %90 of ETH balance
+        const wrapAmountEther = web3Instance.utils.fromWei(wrapAmount.toString(), 'ether');
+        let txHash = await executeTransaction(wrap, gasPriceWei, localNonce, wrapAmountEther);
         if (!txHash) break;
         localNonce++;
         let txLink = `https://taikoscan.io/tx/${txHash}`;
-        let amountDecimal = amount / 1_000_000;
-        console.log(`Lend Transaction sent: ${txLink}, \nAmount: ${amountDecimal} USDC \nGwei: ${web3Instance.utils.fromWei(gasPriceWei, 'gwei')} Gwei`);
+        console.log(`Wrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} ETH`);
 
-        // Redeem
+        // Unwrap with all WETH balance
+        // Assuming wrap and unwrap functions handle WETH address internally
         localNonce = await getNonce(web3Instance);
-        txHash = await executeTransaction(redeem, gasPriceWei, localNonce);
-        if (!txHash) break;
-        localNonce++;
-        
-        // Wrap
-        const wrapAmountMin = 0.0003;
-        const wrapAmountMax = 0.0004;
-        let wrapAmount = Math.random() * (wrapAmountMax - wrapAmountMin) + wrapAmountMin;
-        wrapAmount = parseFloat(wrapAmount.toFixed(6));
-        localNonce = await getNonce(web3Instance);
-        txHash = await executeTransaction(wrap, gasPriceWei, localNonce, wrapAmount);
+        txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, wrapAmountEther);
         if (!txHash) break;
         localNonce++;
         txLink = `https://taikoscan.io/tx/${txHash}`;
-        console.log(`Wrap Transaction sent: ${txLink}, \nAmount: ${wrapAmount} ETH`);
-
-        // Unwrap
-        localNonce = await getNonce(web3Instance);
-        txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, wrapAmount);
-        if (!txHash) break;
-        localNonce++;
-        txLink = `https://taikoscan.io/tx/${txHash}`;
-        console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${wrapAmount} ETH`);
+        console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${wrapAmountEther} WETH`);
 
         iterationCount++;
     }
