@@ -7,7 +7,7 @@ const BN = require('bignumber.js');
 function randomGasPrice(web3Instance) {
     const minGwei = new BN(web3Instance.utils.toWei('0.12', 'gwei'));
     const maxGwei = new BN(web3Instance.utils.toWei('0.15', 'gwei'));
-    const randomGwei = minGwei.plus(BN(Math.floor(Math.random() * (maxGwei.minus(minGwei).toNumber()))));
+    const randomGwei = minGwei.plus(new BN(Math.floor(Math.random() * (maxGwei.minus(minGwei).toNumber()))));
     return randomGwei;
 }
 
@@ -87,11 +87,38 @@ async function main() {
     const maxIterations = 50;
     let iterationCount = 0;
 
-    const startTimestamp = Date.now();
-    const endTime = startTimestamp + (7 * 60 * 60 * 1000); // 7 hours in milliseconds
+    // Get current UTC time
+    function getRandomStartTime() {
+        const startHour = 3; // 3:00 UTC
+        const endHour = 9; // 9:00 UTC
+        const now = new Date();
+        const currentHour = now.getUTCHours();
+        let randomHour;
+
+        if (currentHour < startHour || currentHour >= endHour) {
+            randomHour = Math.floor(Math.random() * (endHour - startHour) + startHour);
+        } else {
+            randomHour = currentHour; // If we're already in the time window, use current hour
+        }
+
+        now.setUTCHours(randomHour, Math.floor(Math.random() * 60), Math.floor(Math.random() * 60), 0);
+        
+        if (now.getTime() < Date.now()) {
+            // If the random time is in the past, move it to tomorrow within the same window
+            now.setUTCDate(now.getUTCDate() + 1);
+        }
+        return now;
+    }
+
+    const randomStartTime = getRandomStartTime();
+    const startTime = randomStartTime.getTime() - Date.now();
+
+    console.log(`Next execution scheduled for: ${randomStartTime.toISOString()}`);
+
+    await new Promise(resolve => setTimeout(resolve, startTime > 0 ? startTime : 0));
 
     const performNextIteration = async () => {
-        if (iterationCount < maxIterations && Date.now() < endTime) {
+        if (iterationCount < maxIterations) {
             await performIteration();
             iterationCount++;
 
