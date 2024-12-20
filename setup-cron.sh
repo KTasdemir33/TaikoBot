@@ -16,8 +16,10 @@ if [ ! -f "$PROJECT_PATH/index.js" ]; then
   exit 1
 fi
 
-# Add the cron job
+# Define the cron job
 CRON_JOB="0 7 * * * $NODE_PATH $PROJECT_PATH/index.js"
-(crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+
+# Check if the cron job already exists
+(crontab -l 2>/dev/null | grep -Fxq "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
 echo "Cron job added successfully. The bot will run every day at 07:00 UTC."
