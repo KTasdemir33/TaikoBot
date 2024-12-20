@@ -23,8 +23,8 @@ mkdir -p $PROJECT_PATH/cron_jobs
 RANDOM_SCRIPT="$PROJECT_PATH/cron_jobs/random_run.sh"
 cat << EOF > "$RANDOM_SCRIPT"
 #!/bin/bash
-RANDOM_MINUTE=\$((\$RANDOM % 60))
-sleep \$RANDOM_MINUTE
+RANDOM_SECOND=\$((\$RANDOM % 60))
+sleep \$RANDOM_SECOND
 $NODE_PATH $PROJECT_PATH/index.js
 EOF
 
@@ -32,7 +32,7 @@ EOF
 chmod +x "$RANDOM_SCRIPT"
 
 # Add the cron job
-CRON_JOB="0 10 * * * cd $PROJECT_PATH && run-parts cron_jobs"
+CRON_JOB="15 6 * * * cd $PROJECT_PATH && run-parts cron_jobs"
 (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
-echo "Cron job added successfully. The bot will run every day between 10:00 and 11:00 UTC at a random minute."
+echo "Cron job added successfully. The bot will run every day at 06:15 UTC with a random second delay."
