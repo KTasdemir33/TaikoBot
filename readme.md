@@ -40,7 +40,7 @@ This BOT automates various tasks. Below is a detailed breakdown of the features 
 3. **Clone the repository:**
 
     ```sh
-    git clone https://github.com/0xFess/TaikoBot.git
+    git clone https://github.com/KTasdemir33/TaikoBot.git
     ```
 
 4. **Navigate to the project directory:**
