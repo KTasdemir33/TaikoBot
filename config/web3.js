@@ -2,8 +2,11 @@ const Web3 = require('web3');
 require('dotenv').config();
 
 const endpoints = [
-    "https://rpc.test.taiko.xyz",
-    "https://alternate-rpc.test.taiko.xyz"
+    'https://rpc.taiko.xyz',
+    'https://rpc.mainnet.taiko.xyz',
+    'https://rpc.ankr.com/taiko',
+    'https://rpc.taiko.tools',
+    'https://taiko.blockpi.network/v1/rpc/public'
 ];
 
 let currentEndpointIndex = 0;
