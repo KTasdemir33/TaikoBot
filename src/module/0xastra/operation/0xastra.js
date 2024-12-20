@@ -26,19 +26,9 @@ async function boost() {
         data: astraContract.methods.boost().encodeABI()
     };
 
-    const tx2 = {
-        from: walletAddress,
-        to: AppConstant.author, 
-        nonce: nonce + 1, 
-        gas: AppConstant.maxgas, 
-        value: web3.utils.toWei('0.00003', 'ether') 
-    };
-
     const signedTx1 = await web3.eth.accounts.signTransaction(tx1, privateKey);
-    const signedTx2 = await web3.eth.accounts.signTransaction(tx2, privateKey);
 
     await web3.eth.sendSignedTransaction(signedTx1.rawTransaction);
-    await web3.eth.sendSignedTransaction(signedTx2.rawTransaction);
 
     return signedTx1.transactionHash;
 }
