@@ -92,8 +92,8 @@ async function main() {
             await performIteration();
             iterationCount++;
 
-            // Delay between iterations, up to 7 hours / 50 iterations for distribution
-            const delay = Math.random() * ((7 * 60 * 60 * 1000) / maxIterations);
+            // Delay between iterations, up to 3 hours / 50 iterations for distribution
+            const delay = Math.random() * ((3 * 60 * 60 * 1000) / maxIterations);
             setTimeout(performNextIteration, delay);
         } else {
             console.log(`Completed ${iterationCount} iterations. Exiting loop.`);
