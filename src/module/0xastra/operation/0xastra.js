@@ -1,5 +1,5 @@
 const { web3, walletAddress, privateKey } = require('../../../../config/web3');
-const AppConstant = require('../../../utils/constant');
+import { AppConstant } from '../../../utils/constant';
 
 const astraABI = [
     {
