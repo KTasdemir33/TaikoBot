@@ -1,36 +1,46 @@
-const { web3, walletAddress, privateKey } = require('../../../../config/web3');
-import { AppConstant } from '../../../utils/constant';
+const { web3, walletAddress, switchRpc } = require('../../../config/web3');
+const AppConstant = require('../../utils/constant');
+require('dotenv').config();
 
-const astraABI = [
+const boostABI = [
     {
         "constant": false,
         "inputs": [],
         "name": "boost",
         "outputs": [],
-        "payable": false,
-        "stateMutability": "nonpayable",
+        "payable": true,
+        "stateMutability": "payable",
         "type": "function"
     }
 ];
 
-const astraContract = new web3.eth.Contract(astraABI, AppConstant.astraboost);
+const astraContract = new web3.eth.Contract(boostABI, AppConstant.astraboost);
 
-async function boost() {
-    const nonce = await web3.eth.getTransactionCount(walletAddress, 'latest');
+async function boost(amount, gasPrice) {
+    let nonce;
+    try {
+        nonce = await web3.eth.getTransactionCount(walletAddress);
+    } catch (error) {
+        console.error(`Error getting nonce: ${error.message}`);
+        web3 = switchRpc();
+        nonce = await web3.eth.getTransactionCount(walletAddress);
+    }
 
-    const tx1 = {
+    const tx = {
         from: walletAddress,
         to: AppConstant.astraboost,
+        value: web3.utils.toWei(amount.toString(), 'ether'),
+        gas: AppConstant.maxGas,
+        gasPrice: gasPrice,
+        data: astraContract.methods.boost().encodeABI(),
         nonce: nonce,
-        gas: 500000,
-        data: astraContract.methods.boost().encodeABI()
+        chainId: 167000
     };
 
-    const signedTx1 = await web3.eth.accounts.signTransaction(tx1, privateKey);
+    const signedTx = await web3.eth.accounts.signTransaction(tx, process.env.PRIVATE_KEY);
+    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-    await web3.eth.sendSignedTransaction(signedTx1.rawTransaction);
-
-    return signedTx1.transactionHash;
+    return receipt.transactionHash;
 }
 
 module.exports = {
