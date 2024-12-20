@@ -16,8 +16,23 @@ if [ ! -f "$PROJECT_PATH/index.js" ]; then
   exit 1
 fi
 
+# Create a directory for cron job scripts if it doesn't exist
+mkdir -p $PROJECT_PATH/cron_jobs
+
+# Create a script that will run our main script at a random time
+RANDOM_SCRIPT="$PROJECT_PATH/cron_jobs/random_run.sh"
+cat << EOF > "$RANDOM_SCRIPT"
+#!/bin/bash
+RANDOM_MINUTE=\$((\$RANDOM % 60))
+sleep \$RANDOM_MINUTE
+$NODE_PATH $PROJECT_PATH/index.js
+EOF
+
+# Make the random script executable
+chmod +x "$RANDOM_SCRIPT"
+
 # Add the cron job
-CRON_JOB="30 1 * * * $NODE_PATH $PROJECT_PATH/index.js"
+CRON_JOB="0 10 * * * cd $PROJECT_PATH && run-parts cron_jobs"
 (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
-echo "Cron job added successfully. The bot will run every day at 1:30 AM UTC."
+echo "Cron job added successfully. The bot will run every day between 10:00 and 11:00 UTC at a random minute."
