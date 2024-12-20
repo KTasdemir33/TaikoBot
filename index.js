@@ -87,42 +87,12 @@ async function main() {
     const maxIterations = 50;
     let iterationCount = 0;
 
-    // Get current UTC time
-    function getRandomStartTime() {
-        const startHour = 3; // 3:00 UTC
-        const endHour = 9; // 9:00 UTC
-        const now = new Date();
-        const currentHour = now.getUTCHours();
-        let randomHour;
-
-        if (currentHour < startHour || currentHour >= endHour) {
-            randomHour = Math.floor(Math.random() * (endHour - startHour) + startHour);
-        } else {
-            randomHour = currentHour; // If we're already in the time window, use current hour
-        }
-
-        now.setUTCHours(randomHour, Math.floor(Math.random() * 60), Math.floor(Math.random() * 60), 0);
-        
-        if (now.getTime() < Date.now()) {
-            // If the random time is in the past, move it to tomorrow within the same window
-            now.setUTCDate(now.getUTCDate() + 1);
-        }
-        return now;
-    }
-
-    const randomStartTime = getRandomStartTime();
-    const startTime = randomStartTime.getTime() - Date.now();
-
-    console.log(`Next execution scheduled for: ${randomStartTime.toISOString()}`);
-
-    await new Promise(resolve => setTimeout(resolve, startTime > 0 ? startTime : 0));
-
     const performNextIteration = async () => {
         if (iterationCount < maxIterations) {
             await performIteration();
             iterationCount++;
 
-            // Random delay between iterations, up to 7 hours / 50 iterations for distribution
+            // Delay between iterations, up to 7 hours / 50 iterations for distribution
             const delay = Math.random() * ((7 * 60 * 60 * 1000) / maxIterations);
             setTimeout(performNextIteration, delay);
         } else {
