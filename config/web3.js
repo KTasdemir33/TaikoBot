@@ -1,38 +1,24 @@
-require('dotenv').config();
 const Web3 = require('web3');
+require('dotenv').config();
 
-const rpcUrls = [
-    'https://rpc.taiko.xyz',
-    'https://rpc.mainnet.taiko.xyz',
-    'https://rpc.ankr.com/taiko',
-    'https://rpc.taiko.tools',
-    'https://taiko.blockpi.network/v1/rpc/public'
+const endpoints = [
+    "https://rpc.test.taiko.xyz",
+    "https://alternate-rpc.test.taiko.xyz"
 ];
 
-let currentRpcIndex = 0;
+let currentEndpointIndex = 0;
+let web3 = new Web3(endpoints[currentEndpointIndex]);
 
-function getWeb3() {
-    const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrls[currentRpcIndex]));
+const switchRpc = () => {
+    currentEndpointIndex = (currentEndpointIndex + 1) % endpoints.length;
+    web3 = new Web3(endpoints[currentEndpointIndex]);
     return web3;
-}
+};
 
-function switchRpc() {
-    currentRpcIndex = (currentRpcIndex + 1) % rpcUrls.length;
-    console.log(`Switching to RPC: ${rpcUrls[currentRpcIndex]}`);
-    return getWeb3();
-}
-
-const web3 = getWeb3();
-const privateKey = process.env.PRIVATE_KEY;
-const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-const walletAddress = account.address;
-
-console.log("Wallet Address:", walletAddress);
+const walletAddress = web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY).address;
 
 module.exports = {
-    getWeb3,
     web3,
     walletAddress,
-    privateKey,
     switchRpc
 };
