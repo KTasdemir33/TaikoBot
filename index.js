@@ -45,9 +45,18 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
     }
 }
 
+function getRandomDelay(totalIterations, totalDurationHours) {
+    const totalDurationMs = totalDurationHours * 60 * 60 * 1000;
+    const averageDelayMs = totalDurationMs / totalIterations;
+    const minDelayMs = averageDelayMs * 0.5;
+    const maxDelayMs = averageDelayMs * 1.5;
+    return Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs;
+}
+
 async function main() {
     let web3Instance = getWeb3();
     const maxIterations = 50;
+    const totalDurationHours = 5;
     let iterationCount = 0;
 
     while (iterationCount < maxIterations) {
@@ -86,6 +95,11 @@ async function main() {
         console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${web3Instance.utils.fromWei(wethBalanceWei, 'ether')} WETH`);
 
         iterationCount++;
+
+        // Rastgele bekleme süresi (5 saat içinde)
+        const delay = getRandomDelay(maxIterations, totalDurationHours);
+        console.log(`Waiting for ${delay / 1000 / 60} minutes before next iteration...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
 
     console.log(`Completed ${maxIterations} iterations. Exiting loop.`);
