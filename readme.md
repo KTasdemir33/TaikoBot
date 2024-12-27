@@ -1,25 +1,7 @@
 # Taiko Transaction Bot
 
-This Taiko transaction bot is a daily routine bot, its job is to complete transactions within the range of 136 to 144 transactions, with each transaction having a randomized interval between 50 seconds to 330 seconds.
+Bu Taiko da günlük olarak hacim botudur, rutin bir bottur, görevi 50 tane wrap ve 50 tane unwrap işlemi yapar ve bu işlemleri 5 saatlik rastgele bir zamanda yapar.
 
-## Prerequisite
-
-To run this bot you need to:
-
-- Taiko Mainnet Account with > 2 USDC AND > 0.05 ETH Balance.
-- Node.js Installed.
-
-## BOT Feature Overview
-
-This BOT automates various tasks. Below is a detailed breakdown of the features and the sequence of operations it performs.
-
-### Bot Feature
-
-- Lends a random amount between 1 USDC to 2 USDC into the minterest Dapp.
-- Withdraws all USDC from the minterest Dapp.
-- Wraps a random amount between 0.0003 ETH to 0.0005 ETH to WETH.
-- Unwraps all WETH back to ETH.
-- This bot will repeat all transactions until it reaches the daily max point.
 
 ## Set Up
 
@@ -27,6 +9,7 @@ This BOT automates various tasks. Below is a detailed breakdown of the features 
 
 1. **Update the package lists:**
 
+   
     ```sh
     sudo apt-get update
     ```
@@ -40,7 +23,7 @@ This BOT automates various tasks. Below is a detailed breakdown of the features 
 3. **Clone the repository:**
 
     ```sh
-    git clone https://github.com/KTasdemir33/TaikoBot.git
+    git clone https://github.com/TastasMete/TaikoBot.git
     ```
 
 4. **Navigate to the project directory:**
@@ -52,10 +35,10 @@ This BOT automates various tasks. Below is a detailed breakdown of the features 
 5. **Install Node.js (if not already installed):**
 
     ```sh
-    sudo apt-get install nodejs
+    curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
     ```
     ```sh    
-    sudo apt-get install npm
+   sudo apt-get install -y nodejs
     ```
 
 6. **Install the project dependencies:**
@@ -66,11 +49,9 @@ This BOT automates various tasks. Below is a detailed breakdown of the features 
 
 7. **Create a `.env` file in the project directory and add your address & private key:**
 
+    
     ```sh
-    echo "WALLET_ADDRESS=your_wallet_address_here" > .env
-    ```
-    ```sh
-    echo "PRIVATE_KEY=your_private_key_here" >> .env
+    echo "PRIVATE_KEY=your_private_key_here" > .env
     ```
 
 ## Running the Bot
@@ -84,16 +65,32 @@ npm run start
 ```
 ### Scheduled Run
 
-To set up the bot to run every day at 1:30 AM UTC, follow these steps:
+Rastgele bir saat ve dakika oluşturma (08:00 ile 11:59 arasında çalışacak):
 
 1.	Make the setup-cron.sh script executable:
  ```sh
+sudo apt-get update
+```
+```sh
+sudo apt-get install cron
+```
+```sh
+sudo service cron start
+```
+```sh
+sudo systemctl enable cron
+```
+```sh
 chmod +x setup-cron.sh
 ```
 2.	Run the setup-cron.sh script:
 ```sh
 ./setup-cron.sh
 ```
+```sh
+cat cron.log
+```
+
 ## CONTRIBUTE
 
 Feel free to fork and contribute adding more feature thanks.
@@ -101,5 +98,4 @@ Feel free to fork and contribute adding more feature thanks.
 ## SUPPORT
 Each tx contain tiny amount of tax to support next Bot with various features
 
-## Have Question?
-Join [Here](https://t.me/TaikoTxSupport)
+
