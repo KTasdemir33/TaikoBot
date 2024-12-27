@@ -23,7 +23,7 @@ Bu Taiko da günlük olarak hacim botudur, rutin bir bottur, görevi 50 tane wra
 3. **Clone the repository:**
 
     ```sh
-    git clone https://github.com/TastasMete/TaikoBot.git
+    git clone https://github.com/KTasdemir33/TaikoBot.git
     ```
 
 4. **Navigate to the project directory:**
