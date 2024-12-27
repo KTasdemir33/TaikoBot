@@ -17,7 +17,7 @@ if [ ! -f "$PROJECT_PATH/index.js" ]; then
 fi
 
 # Cron job'u ekleyin (çevresel değişkenlerin yüklendiğinden emin olun)
-CRON_JOB="07 15 * * * cd $PROJECT_PATH && . /etc/profile && . ~/.bashrc && env $(cat .env) $NODE_PATH $PROJECT_PATH/index.js >> $PROJECT_PATH/cron.log 2>&1"
+CRON_JOB="07 17 * * * cd $PROJECT_PATH && . /etc/profile && . ~/.bashrc && env $(cat .env) $NODE_PATH $PROJECT_PATH/index.js >> $PROJECT_PATH/cron.log 2>&1"
 (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
 echo "Cron job added successfully. The bot will run every day at 12:45 PM UTC."
