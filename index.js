@@ -3,7 +3,9 @@ const { getWeb3, walletAddress, switchRpc } = require('./config/web3');
 const { wrap } = require('./src/module/wrap/wrap');
 const { unwrap } = require('./src/module/wrap/unwrap');
 const BN = require('bn.js');
+const Web3 = require('web3');
 
+// Random gas price calculation function
 function randomGasPrice(web3Instance) {
     const minGwei = new BN(web3Instance.utils.toWei('0.11', 'gwei'));
     const maxGwei = new BN(web3Instance.utils.toWei('0.15', 'gwei'));
@@ -11,10 +13,12 @@ function randomGasPrice(web3Instance) {
     return randomGwei;
 }
 
+// Function to get nonce
 async function getNonce(web3Instance) {
     return await web3Instance.eth.getTransactionCount(walletAddress, 'pending');
 }
 
+// Transaction execution function
 async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
     let web3Instance = getWeb3();
     while (true) {
@@ -45,21 +49,75 @@ async function executeTransaction(action, gasPriceWei, localNonce, ...args) {
     }
 }
 
-function getRandomDelay(totalIterations, totalDurationHours) {
-    const totalDurationMs = totalDurationHours * 60 * 60 * 1000;
-    const averageDelayMs = totalDurationMs / totalIterations;
-    const minDelayMs = averageDelayMs * 0.5;
-    const maxDelayMs = averageDelayMs * 1.5;
-    return Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs;
+// Function to get WETH balance
+async function getWethBalance(web3Instance, wethContractAddress, walletAddress) {
+    const wethChecksumAddress = Web3.utils.toChecksumAddress(wethContractAddress);
+    const wethContract = new web3Instance.eth.Contract([
+        {
+            "constant": true,
+            "inputs": [{ "name": "_owner", "type": "address" }],
+            "name": "balanceOf",
+            "outputs": [{ "name": "balance", "type": "uint256" }],
+            "type": "function"
+        }
+    ], wethChecksumAddress);
+
+    const balance = await wethContract.methods.balanceOf(walletAddress).call();
+    return new BN(balance);
+}
+
+// Function to confirm transaction
+async function confirmTransaction(web3Instance, txHash) {
+    const receipt = await web3Instance.eth.getTransactionReceipt(txHash);
+    return receipt && receipt.status;
+}
+
+// Function to periodically check WETH balance
+async function waitForWethBalance(web3Instance, wethContractAddress, walletAddress, timeout = 60000, interval = 5000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        const wethBalance = await getWethBalance(web3Instance, wethContractAddress, walletAddress);
+        if (!wethBalance.isZero()) {
+            return wethBalance;
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    throw new Error("WETH balance did not appear within the timeout period.");
+}
+
+// Function to periodically check ETH balance
+async function waitForEthBalance(web3Instance, walletAddress, requiredBalance, timeout = 60000, interval = 5000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        const balanceWei = await web3Instance.eth.getBalance(walletAddress);
+        const balance = new BN(balanceWei);
+        if (balance.gte(requiredBalance)) {
+            return balance;
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    throw new Error("Required ETH balance did not appear within the timeout period.");
+}
+
+// Create a random wait time (between 0 and max ms)
+function getRandomWaitTime(maxMilliseconds) {
+    return Math.floor(Math.random() * maxMilliseconds);
 }
 
 async function main() {
     let web3Instance = getWeb3();
-    const maxIterations = 50;
-    const totalDurationHours = 5;
-    let iterationCount = 0;
+    const maxIterations = 50;  // Just run for 50 iterations without time limit
+    let completedIterations = 0;
+    let completedSwaps = 0;
+    const wethContractAddress = '0xA51894664A773981C6C112C43ce576f315d5b1B6'; // Correct WETH contract address for Taiko network
 
-    while (iterationCount < maxIterations) {
+    while (completedIterations < maxIterations) {
+        const waitTime = getRandomWaitTime(30000); // Random wait up to 30 seconds for each iteration
+        console.log(`Waiting for ${waitTime / 1000} seconds before next iteration.`);
+        
+        // Wait for the specified time
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        
         const gasPriceWei = randomGasPrice(web3Instance);
         let localNonce = await getNonce(web3Instance);
 
@@ -77,32 +135,45 @@ async function main() {
         }
 
         // ETH to WETH (Wrap)
-        const amountToWrap = balance.muln(90).divn(100); // %90 of the balance
+        const amountToWrap = balance.muln(90).divn(100); // 90% of the balance
+        await waitForEthBalance(web3Instance, walletAddress, amountToWrap.add(totalTxCost)); // Check if the required ETH balance is available
+
         localNonce = await getNonce(web3Instance);
         let txHash = await executeTransaction(wrap, gasPriceWei, localNonce, web3Instance.utils.fromWei(amountToWrap, 'ether'));
         if (!txHash) break;
         localNonce++;
         let txLink = `https://taikoscan.io/tx/${txHash}`;
         console.log(`Wrap Transaction sent: ${txLink}, \nAmount: ${web3Instance.utils.fromWei(amountToWrap, 'ether')} ETH`);
+        completedSwaps++;
+
+        // Wait for wrap transaction to be confirmed
+        let confirmed = false;
+        while (!confirmed) {
+            confirmed = await confirmTransaction(web3Instance, txHash);
+            if (!confirmed) {
+                console.log("Wrap transaction not confirmed yet. Waiting...");
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before checking again
+            }
+        }
+        console.log("Wrap transaction confirmed.");
 
         // WETH to ETH (Unwrap)
-        const wethBalanceWei = await web3Instance.eth.getBalance(walletAddress); // Assume same wallet holds WETH
+        const wethBalance = await waitForWethBalance(web3Instance, wethContractAddress, walletAddress);
+        console.log(`WETH Balance: ${web3Instance.utils.fromWei(wethBalance, 'ether')} WETH`);
+
         localNonce = await getNonce(web3Instance);
-        txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, web3Instance.utils.fromWei(wethBalanceWei, 'ether'));
+        txHash = await executeTransaction(unwrap, gasPriceWei, localNonce, web3Instance.utils.fromWei(wethBalance, 'ether'));
         if (!txHash) break;
         localNonce++;
         txLink = `https://taikoscan.io/tx/${txHash}`;
-        console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${web3Instance.utils.fromWei(wethBalanceWei, 'ether')} WETH`);
+        console.log(`Unwrap Transaction sent: ${txLink}, \nAmount: ${web3Instance.utils.fromWei(wethBalance, 'ether')} WETH`);
+        completedSwaps++;
 
-        iterationCount++;
-
-        // Rastgele bekleme süresi (5 saat içinde)
-        const delay = getRandomDelay(maxIterations, totalDurationHours);
-        console.log(`Waiting for ${delay / 1000 / 60} minutes before next iteration...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        completedIterations++;
+        console.log(`Completed ${completedIterations} iterations and ${completedSwaps} swaps.`);
     }
 
-    console.log(`Completed ${maxIterations} iterations. Exiting loop.`);
+    console.log(`Completed all ${maxIterations} iterations. Exiting loop.`);
 }
 
 main().catch(console.error);
